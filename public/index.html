@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo HCM Bus Finder V10 (ĐÃ SỬA TỌA ĐỘ)</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        body { overflow: hidden; }
+        .main-container { display: flex; flex-wrap: nowrap; height: 100vh; }
+        .control-panel {
+            width: 420px;
+            flex-shrink: 0;
+            background-color: #f8f9fa;
+            padding: 20px;
+            overflow-y: auto;
+            height: 100vh;
+            border-right: 1px solid #dee2e6;
+        }
+        .map-container { flex-grow: 1; height: 100vh; }
+        #map { height: 100%; width: 100%; }
+        .route-step {
+            position: relative;
+            padding-left: 30px;
+            padding-bottom: 15px;
+            border-left: 2px solid #0d6efd;
+        }
+        .route-step::before {
+            content: '●';
+            position: absolute;
+            left: -9px;
+            top: 0;
+            font-size: 16px;
+            color: #0d6efd;
+            background: #fff;
+        }
+        .route-step.transfer::before { content: '🔁'; left: -12px; font-size: 14px; }
+        .route-step:last-child { border-left: none; padding-bottom: 0; }
+        .route-step:last-child::before { color: #dc3545; }
+        .map-loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .osrm-info {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d7ff;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="main-container">
+        
+        <div class="control-panel">
+            <h3 class="mb-3">🚌 HCM Bus Finder <span class="badge bg-success">V10</span></h3>
+            <p class="text-muted small">Demo AI (Đã sửa tọa độ chính xác)</p>
+            
+            <div class="mb-3">
+                <label for="start-stop" class="form-label">📍 Điểm đón</label>
+                <select id="start-stop" class="form-select"></select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="end-stop" class="form-label">🏁 Điểm đến</label>
+                <select id="end-stop" class="form-select"></select>
+            </div>
+            
+            <button id="find-route-btn" class="btn btn-primary w-100">Tìm đường</button>
+            
+            <hr class="my-4">
+            
+            <div id="results-container">
+                <h5 id="results-title" class="d-none">Đề xuất từ AI:</h5>
+                <div id="results-output">
+                    </div>
+            </div>
+        </div>
+
+        <div class="map-container" style="position: relative;">
+            <div id="map"></div>
+            <div id="map-loader" class="map-loading-overlay">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang tải đường đi...</span>
+                </div>
+            </div>
+        </div>
+
+    </div> 
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // --- PHẦN 1: DỮ LIỆU DEMO (CẬP NHẬT V10 - TỌA ĐỘ CHÍNH XÁC) ---
+        // ==========================================================
+        // Tọa độ đã được kiểm tra lại bằng Google Maps cho TỪNG TRẠM BUS
+        // ==========================================================
+        const TRANSFER_TIME_PENALTY = 10; 
+
+        const appData = {
+            stops: [
+                // --- TỌA ĐỘ TRUNG TÂM (ĐÃ CHUẨN HÓA) ---
+                { "id": "s1", "name": "Bến Thành (Trạm Hàm Nghi)", "lat": 10.77102, "lng": 106.70018 },
+                { "id": "s2", "name": "Dinh Độc Lập", "lat": 10.77722, "lng": 106.69556 },
+                { "id": "s3", "name": "Nhà Thờ Đức Bà", "lat": 10.77976, "lng": 106.69905 },
+
+                // --- TỌA ĐỘ LÀNG ĐẠI HỌC (ĐÃ SỬA LỖI) ---
+                { "id": "s8", "name": "Trạm KTX Khu B (cổng trước)", "lat": 10.881695029579637, "lng": 106.78234036207795 },
+                { "id": "s8", "name": "Trạm KTX Khu B (cổng sau)", "lat": 10.883770598883276,  "lng": 106.77859599831878 },
+                { "id": "s9", "name": "Trạm ĐH Bách Khoa (Làng ĐH)", "lat": 10.88073, "lng": 106.80187 },
+                { "id": "s10", "name": "Trạm ĐH KHTN (Làng ĐH)", "lat": 10.880779744397792,  "lng": 106.80536483694458 },
+                { "id": "s11", "name": "Trạm KTX Khu A", "lat": 10.87840825315956, "lng": 106.80626088810587 },
+                { "id": "s12", "name": "Trường ĐH KHXH&NV", "lat": 10.873442956163826,  "lng": 106.80227879717464 },
+                { "id": "s13", "name": "Trường ĐH Quốc Tế", "lat": 10.87719848957338, "lng": 106.80283445876736 },
+                { "id": "s14", "name": "Trường ĐH CNTT", "lat": 10.868727289860669,  "lng":  106.80417515161123 },
+                { "id": "s15", "name": "Trạm ĐH Kinh tế - Luật", "lat": 10.86925295551176,  "lng": 106.77791312768804 },
+                { "id": "s16", "name": "Bến xe buýt ĐHQG", "lat": 10.87352, "lng": 106.80155 },
+                
+                // --- TỌA ĐỘ ẢO (TUYẾN 19) (ĐÃ SỬA) ---
+                { "id": "s19_1", "name": "(T19) Trạm Hàng Xanh", "lat": 10.79995, "lng": 106.70580 },
+                { "id": "s19_3", "name": "(T19) Trạm Ngã tư Thủ Đức", "lat": 10.84920, "lng": 106.77250 },
+                { "id": "s19_4", "name": "(T19) Trạm Suối Tiên", "lat": 10.86870, "lng": 106.79600 }
+            ],
+            routes: [
+                {
+                    "id": "r_19",
+                    "name": "Tuyến 19 (Bến Thành - Làng ĐH)",
+                    "price": 6000,
+                    // Bến Thành -> Nhà Thờ -> Hàng Xanh -> Ngã tư Thủ Đức -> Suối Tiên -> KHXHNV -> Bến xe ĐHQG -> KTX B
+                    "stops": ["s1", "s3", "s19_1", "s19_3", "s19_4", "s12", "s16", "s8"], 
+                    "times": [15, 8, 10, 5, 5, 5, 10]
+                },
+                {
+                    "id": "r_08", "name": "Tuyến 08 (KTX Khu B - Bến Thành)", "price": 6000,
+                    "stops": ["s8", "s9", "s2", "s1"], "times": [5, 30, 10] 
+                },
+                {
+                    "id": "r_52", "name": "Tuyến 52 (Bến Thành - ĐH Quốc Tế)", "price": 6000,
+                    "stops": ["s1", "s13"], "times": [45]
+                },
+                {
+                    "id": "r_99", "name": "Tuyến 99 (Chợ Lớn - KTX Khu B)", "price": 6000,
+                    "stops": ["s1", "s11", "s8"], "times": [40, 5]
+                },
+                {
+                    "id": "r_33", "name": "Tuyến 33 (An Sương - Làng ĐH)", "price": 6000,
+                    "stops": ["s2", "s16", "s11", "s10"], "times": [30, 5, 2]
+                },
+                {
+                    "id": "r_109", "name": "Tuyến 109 (Vòng quanh Làng ĐH)", "price": 3000,
+                    // KTX A -> KTX B -> ĐH Quốc Tế -> ĐH CNTT -> ĐH KHTN -> ĐH KHXHNV -> KTX A
+                    "stops": ["s11", "s8", "s13", "s14", "s10", "s12", "s11"],
+                    "times": [5, 5, 3, 3, 2, 2]
+                }
+            ]
+        };
+
+        // --- PHẦN 2: KHỞI TẠO ---
+        
+        let map;
+        let routeLayer;
+        const startSelect = document.getElementById('start-stop');
+        const endSelect = document.getElementById('end-stop');
+        const findBtn = document.getElementById('find-route-btn');
+        const resultsTitle = document.getElementById('results-title');
+        const resultsOutput = document.getElementById('results-output');
+        const mapLoader = document.getElementById('map-loader');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            populateSelects();
+            findBtn.addEventListener('click', handleFindRoute);
+        });
+
+        function initMap() {
+            map = L.map('map').setView([10.875, 106.802], 15); // Zoom vào Làng ĐH
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            routeLayer = L.layerGroup().addTo(map);
+        }
+
+        function populateSelects() {
+            appData.stops.forEach(stop => {
+                const option = new Option(stop.name, stop.id);
+                startSelect.add(option.cloneNode(true));
+                endSelect.add(option);
+            });
+            startSelect.value = "s11"; // KTX Khu A
+            endSelect.value = "s14"; // ĐH CNTT
+        }
+
+        // --- PHẦN 3: LOGIC "AI" TÌM ĐƯỜNG (Dijkstra) ---
+
+        function handleFindRoute() {
+            const startId = startSelect.value;
+            const endId = endSelect.value;
+            resultsOutput.innerHTML = '<div class="alert alert-info">Đang tính toán...</div>';
+            routeLayer.clearLayers();
+            resultsTitle.classList.add('d-none');
+            if (startId === endId) {
+                resultsOutput.innerHTML = '<div class="alert alert-warning">Vui lòng chọn điểm đi và điểm đến khác nhau.</div>';
+                return;
+            }
+            const fastestPath = findFastestPathDijkstra(startId, endId);
+            const cheapestPath = findCheapestPathSimple(startId, endId);
+            if (!fastestPath && !cheapestPath) {
+                resultsOutput.innerHTML = '<div class="alert alert-danger">Rất tiếc, không tìm thấy lộ trình phù hợp.</div>';
+                return;
+            }
+            displayResults(cheapestPath, fastestPath);
+            resultsTitle.classList.remove('d-none');
+            const firstPaneId = fastestPath ? 'fastest-pane' : 'cheapest-pane';
+            drawPathOnMap(fastestPath || cheapestPath, firstPaneId); 
+        }
+
+        function findFastestPathDijkstra(startId, endId) {
+            let pq = [{ time: 0, stop: startId, path: [], currentRoute: null }];
+            let minTimeToStop = new Map();
+            minTimeToStop.set(startId, 0);
+            while (pq.length > 0) {
+                pq.sort((a, b) => a.time - b.time);
+                let { time, stop, path, currentRoute } = pq.shift();
+                if (time > (minTimeToStop.get(stop) || Infinity)) { continue; }
+                if (stop === endId) {
+                    let totalPrice = 0;
+                    const routeIds = new Set(path.map(step => step.routeId).filter(Boolean));
+                    routeIds.forEach(routeId => { totalPrice += getRouteById(routeId).price; });
+                    return { id: 'fastest', type: path.length > 1 ? 'transfer' : 'direct', totalTime: time, totalPrice: totalPrice, steps: path };
+                }
+                for (const route of appData.routes) {
+                    const stopIndex = route.stops.indexOf(stop);
+                    if (stopIndex > -1) {
+                        const isTransfer = (currentRoute !== null && currentRoute !== route.id);
+                        const transferPenalty = isTransfer ? TRANSFER_TIME_PENALTY : 0;
+                        for (let i = stopIndex + 1; i < route.stops.length; i++) {
+                            const nextStopId = route.stops[i];
+                            let timeToNextStop = 0;
+                            for (let j = stopIndex; j < i; j++) { timeToNextStop += route.times[j]; }
+                            const newTime = time + timeToNextStop + transferPenalty;
+                            if (newTime < (minTimeToStop.get(nextStopId) || Infinity)) {
+                                minTimeToStop.set(nextStopId, newTime);
+                                let newStep = { type: 'bus', routeId: route.id, startStopId: stop, endStopId: nextStopId, time: timeToNextStop };
+                                let newPath = [...path];
+                                if(isTransfer) { newPath.push({ type: 'transfer', transferStopId: stop, time: TRANSFER_TIME_PENALTY }); }
+                                newPath.push(newStep);
+                                pq.push({ time: newTime, stop: nextStopId, path: newPath, currentRoute: route.id });
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function findCheapestPathSimple(startId, endId) {
+            let paths = [];
+            for (const route of appData.routes) {
+                const startIndex = route.stops.indexOf(startId);
+                const endIndex = route.stops.indexOf(endId);
+                if (startIndex > -1 && endIndex > -1 && startIndex < endIndex) {
+                    let segment = calculateSegment(route.id, startId, endId);
+                    if (segment) { paths.push({ id: 'cheapest_direct', type: 'direct', totalTime: segment.time, totalPrice: route.price, steps: [ { type: 'bus', routeId: route.id, startStopId: startId, endStopId: endId, time: segment.time, price: route.price } ] }); }
+                }
+            }
+            for (const route1 of appData.routes) {
+                const startIndexR1 = route1.stops.indexOf(startId);
+                if (startIndexR1 === -1) continue; 
+                for (let i = startIndexR1 + 1; i < route1.stops.length; i++) {
+                    const transferStopId = route1.stops[i];
+                    for (const route2 of appData.routes) {
+                        if (route1.id === route2.id) continue; 
+                        const transferIndexR2 = route2.stops.indexOf(transferStopId);
+                        const endIndexR2 = route2.stops.indexOf(endId);
+                        if (transferIndexR2 > -1 && endIndexR2 > -1 && transferIndexR2 < endIndexR2) {
+                            let segment1 = calculateSegment(route1.id, startId, transferStopId);
+                            let segment2 = calculateSegment(route2.id, transferStopId, endId);
+                            if (segment1 && segment2) {
+                                paths.push({ id: 'cheapest_transfer', type: 'transfer', totalTime: segment1.time + segment2.time + TRANSFER_TIME_PENALTY, totalPrice: route1.price + route2.price, steps: [ { type: 'bus', routeId: route1.id, startStopId: startId, endStopId: transferStopId, time: segment1.time, price: route1.price }, { type: 'transfer', transferStopId: transferStopId, time: TRANSFER_TIME_PENALTY }, { type: 'bus', routeId: route2.id, startStopId: transferStopId, endStopId: endId, time: segment2.time, price: route2.price } ] });
+                            }
+                        }
+                    }
+                }
+            }
+            if (paths.length === 0) return null;
+            paths.sort((a, b) => { if (a.totalPrice !== b.totalPrice) { return a.totalPrice - b.totalPrice; } return a.totalTime - b.totalTime; });
+            return { ...paths[0], id: 'cheapest' };
+        }
+
+
+        // --- PHẦN 4: HIỂN THỊ KẾT QUẢ VÀ VẼ BẢN ĐỒ (Giữ nguyên logic V8/V9) ---
+
+        function displayResults(cheapest, fastest) {
+            const uniquePaths = new Map();
+            let firstPaneId = '';
+            if (fastest) {
+                const paneId = 'fastest-pane';
+                uniquePaths.set(JSON.stringify(fastest.steps), { ...fastest, id: 'fastest', title: 'Nhanh nhất 🚀 (Dijkstra)', paneId: paneId });
+                if (!firstPaneId) firstPaneId = paneId;
+            }
+            if (cheapest) {
+                const paneId = 'cheapest-pane';
+                uniquePaths.set(JSON.stringify(cheapest.steps), { ...cheapest, id: 'cheapest', title: 'Rẻ nhất 💰 (Đơn giản)', paneId: paneId });
+                if (!firstPaneId) firstPaneId = paneId;
+            }
+            let navTabs = '<ul class="nav nav-tabs nav-fill mb-3" id="myTab" role="tablist">';
+            let tabContent = '<div class="tab-content" id="myTabContent">';
+            let isFirst = true;
+            for (const [_, path] of uniquePaths) {
+                const activeClass = isFirst ? 'active' : '';
+                const paneId = path.paneId;
+                navTabs += `<li class="nav-item" role="presentation"><button class="nav-link ${activeClass}" id="${path.id}-tab" data-bs-toggle="tab" data-bs-target="#${paneId}" type="button" role="tab">${path.title} <br><small>${path.totalTime} phút - ${path.totalPrice.toLocaleString('vi-VN')}đ</small></button></li>`;
+                tabContent += `<div class="tab-pane fade show ${activeClass}" id="${paneId}" role="tabpanel">${generatePathHtml(path)}<div class="osrm-info" id="osrm-info-${paneId}">Đang tải dữ liệu khoảng cách...</div></div>`;
+                isFirst = false;
+            }
+            navTabs += '</ul>';
+            tabContent += '</div>';
+            resultsOutput.innerHTML = navTabs + tabContent;
+            const activePath = fastest ? (cheapest ? (fastest.totalTime <= cheapest.totalTime ? fastest : cheapest) : fastest) : cheapest;
+            if (activePath) { drawPathOnMap(activePath, firstPaneId); }
+            document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
+                tab.addEventListener('shown.bs.tab', async (event) => {
+                    const paneId = event.target.getAttribute('data-bs-target').substring(1);
+                    mapLoader.style.display = 'flex'; 
+                    try {
+                        if (event.target.id === 'fastest-tab' && fastest) { await drawPathOnMap(fastest, paneId); } 
+                        else if (event.target.id === 'cheapest-tab' && cheapest) { await drawPathOnMap(cheapest, paneId); }
+                    } catch (error) { console.error("Lỗi khi vẽ đường đi:", error); } 
+                    finally { mapLoader.style.display = 'none'; }
+                });
+            });
+        }
+
+        function generatePathHtml(path) {
+            let html = '<div class="path-steps">';
+            for (const step of path.steps) {
+                if (step.type === 'bus') {
+                    const startStop = getStopById(step.startStopId);
+                    const endStop = getStopById(step.endStopId);
+                    const route = getRouteById(step.routeId);
+                    html += `<div class="route-step"><strong>Đón ${route.name}</strong><p class="mb-1 small text-muted">Tại: ${startStop.name}</p><p class="mb-0 small text-muted">Đi ${step.time} phút và xuống tại: ${endStop.name}</p></div>`;
+                } else if (step.type === 'transfer') {
+                    const transferStop = getStopById(step.transferStopId);
+                    html += `<div class="route-step transfer"><strong>Chuyển tuyến</strong><p class="mb-0 small text-muted">Chờ khoảng ${step.time} phút tại trạm ${transferStop.name} để đón tuyến tiếp theo.</p></div>`;
+                }
+            }
+            const lastBusStep = path.steps.filter(s => s.type === 'bus').pop();
+            if (lastBusStep) {
+                const finalStop = getStopById(lastBusStep.endStopId);
+                html += `<div class="route-step"><strong>Đã đến!</strong><p class="mb-0 small text-muted">Bạn đã tới ${finalStop.name}.</p></div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // HÀM VẼ ĐƯỜNG ĐI (ĐÃ SỬA LỖI V8/V9)
+        async function drawPathOnMap(path, paneId) {
+            routeLayer.clearLayers();
+            if (!path) return;
+            mapLoader.style.display = 'flex';
+            let totalDistance = 0;
+            let totalDuration = 0;
+            try {
+                const routeColors = ['#0d6efd', '#dc3545', '#198754', '#fd7e14', '#6f42c1'];
+                let allLatLngs = []; 
+                let colorIndex = 0;
+                for (const step of path.steps) {
+                    if (step.type === 'bus') {
+                        const route = getRouteById(step.routeId);
+                        const startStop = getStopById(step.startStopId);
+                        const endStop = getStopById(step.endStopId);
+
+                        let waypoints = [
+                            `${startStop.lng},${startStop.lat}`,
+                            `${endStop.lng},${endStop.lat}`
+                        ];
+
+                        const startIndex = route.stops.indexOf(step.startStopId);
+                        const endIndex = route.stops.indexOf(step.endStopId);
+                        for(let i = startIndex; i <= endIndex; i++) {
+                            const stop = getStopById(route.stops[i]);
+                            allLatLngs.push([stop.lat, stop.lng]);
+                        }
+                        
+                        const coordsString = waypoints.join(';');
+                        const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(`OSRM request failed`);
+                        const data = await response.json();
+                        if (data.code === 'Ok' && data.routes.length > 0) {
+                            const routeData = data.routes[0];
+                            totalDistance += routeData.distance; 
+                            totalDuration += routeData.duration; 
+                            const geometry = routeData.geometry.coordinates;
+                            const latLngs = geometry.map(coord => [coord[1], coord[0]]); 
+                            L.polyline(latLngs, { color: routeColors[colorIndex % routeColors.length], weight: 5, opacity: 0.8 }).addTo(routeLayer).bindPopup(route.name);
+                        }
+                        colorIndex++;
+                    }
+                }
+                const firstBusStep = path.steps.find(s => s.type === 'bus');
+                const lastBusStep = path.steps.filter(s => s.type === 'bus').pop();
+                if (firstBusStep && lastBusStep) {
+                    const startStop = getStopById(firstBusStep.startStopId);
+                    const endStop = getStopById(lastBusStep.endStopId);
+                    L.marker([startStop.lat, startStop.lng]).addTo(routeLayer).bindPopup(`<b>Điểm đón:</b> ${startStop.name}`).openPopup();
+                    L.marker([endStop.lat, endStop.lng]).addTo(routeLayer).bindPopup(`<b>Điểm đến:</b> ${endStop.name}`);
+                }
+                if (allLatLngs.length > 0) { map.fitBounds(allLatLngs, { padding: [50, 50] }); }
+                const osrmInfoDiv = document.getElementById(`osrm-info-${paneId}`);
+                if (osrmInfoDiv) {
+                    osrmInfoDiv.innerHTML = `<strong>Thông tin tham khảo (OSRM):</strong><br>- Tổng khoảng cách: <b>${(totalDistance / 1000).toFixed(2)} km</b><br>- T/g di chuyển (xe chạy): <b>${Math.round(totalDuration / 60)} phút</b><br><small class="text-muted">(Không bao gồm thời gian chờ xe và kẹt xe)</small>`;
+                }
+            } catch (error) {
+                console.error("Lỗi khi vẽ đường đi:", error);
+                const osrmInfoDiv = document.getElementById(`osrm-info-${paneId}`);
+                if (osrmInfoDiv) { osrmInfoDiv.innerHTML = `<span class="text-danger">Lỗi: Không thể tải dữ liệu khoảng cách.</span>`; }
+            } finally {
+                mapLoader.style.display = 'none';
+            }
+        }
+
+        // --- PHẦN 5: CÁC HÀM TIỆN ÍCH (Helpers) ---
+
+        function getStopById(stopId) { return appData.stops.find(s => s.id === stopId); }
+        function getRouteById(routeId) { return appData.routes.find(r => r.id === routeId); }
+        function calculateSegment(routeId, startStopId, endStopId) {
+            const route = getRouteById(routeId); if (!route) return null;
+            const startIndex = route.stops.indexOf(startStopId); const endIndex = route.stops.indexOf(endStopId);
+            if (startIndex > -1 && endIndex > -1 && startIndex < endIndex) {
+                let time = 0;
+                for (let i = startIndex; i < endIndex; i++) { time += route.times[i]; }
+                return { time: time };
+            }
+            return null;
+        }
+
+    </script>
+
+</body>
+</html>
