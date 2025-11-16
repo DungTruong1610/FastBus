@@ -117,42 +117,56 @@
         const appData = {
             stops: [
                 // --- TỌA ĐỘ TRUNG TÂM (ĐÃ CHUẨN HÓA) ---
-                { "id": "s1", "name": "Bến Thành (Trạm Hàm Nghi)", "lat": 10.77102, "lng": 106.70018 },
-                { "id": "s2", "name": "Dinh Độc Lập", "lat": 10.77722, "lng": 106.69556 },
-                { "id": "s3", "name": "Nhà Thờ Đức Bà", "lat": 10.77976, "lng": 106.69905 },
+                { "id": "s1", "name": "Bến Thành (Trạm Hàm Nghi)", "lat": 10.771251179251026, "lng": 106.6995097948302 },
+                { "id": "s2", "name": "Dinh Độc Lập", "lat": 10.778427151474379, "lng": 106.69667624251595 },
+                { "id": "s3", "name": "Nhà Thờ Đức Bà", "lat": 10.779260678874708, "lng": 106.69942537063746 },
+                { "id": "s3_1", "name": "Bưu điện trung tâm Thành phố", "lat": 10.779665918654928, "lng": 106.69992357169153},
 
-                { "id": "s_temp1", "name": "Bến Thành (Trạm Phạm Ngũ Lão)", "lat": 10.77081328342924, "lng": 106.69844995614893}, // béo thêm
-                { "id": "s_temp2", "name": "Đại học Luật (Trạm Nguyễn Tất Thành)", "lat": 10.767081185152442, "lng": 106.70624420636734}, // béo thêm
-                { "id": "s_temp3", "name": "Công trường Mê Linh (2 Hai Bà Trưng)", "lat": 10.776069156222697, "lng": 106.70582091456573}, //béo thêm
-                { "id": "s_temp4", "name": "Công trường Mê Linh (đối diện 2 Hai Bà Trưng)", "lat": 10.775965907339254, "lng": 106.70567241775159}, //béo thêm
+                { "id": "s_temp1", "name": "Bến Thành (Trạm Phạm Ngũ Lão)", "lat": 10.77081328342924, "lng": 106.69844995614893}, 
+                { "id": "s_temp2", "name": "Đại học Luật (Trạm Nguyễn Tất Thành)", "lat": 10.767081185152442, "lng": 106.70624420636734}, 
+                { "id": "s_temp3", "name": "Công trường Mê Linh (2 Hai Bà Trưng)", "lat": 10.776069156222697, "lng": 106.70582091456573}, 
+                { "id": "s_temp4", "name": "Công trường Mê Linh (đối diện 2 Hai Bà Trưng)", "lat": 10.775965907339254, "lng": 106.70567241775159},
                 { "id": "s_temp5", "name": "Công trường Mê Linh (Thi Sách)", "lat": 10.776881560516607, "lng": 106.70584738146607},
                 { "id": "s_temp5", "name": "Bến Bạch Đằng (21 Tôn Đức Thắng)", "lat": 10.77358650449322,  "lng": 106.70644991772534},
-                { "id": "s_temp6", "name": "Hàm Nghi (2-4 Hàm Nghi)", "lat": 10.770897680732709, "lng": 106.70555206230915},
+                { "id": "s_temp6", "name": "Hàm Nghi (số 2-4 Hàm Nghi)", "lat": 10.770897680732709, "lng": 106.70555206230915},
                 { "id": "s_temp7", "name": "Tòa nhà Bitexco (33-35-37 Hàm Nghi)", "lat": 10.770682969206348, "lng": 106.70486767183},
                 { "id": "s_temp8", "name": "Bảo tàng Mỹ thuật (56 Nguyễn Thái Bình)", "lat": 10.769274798890423, "lng": 106.69972331588316},
 
-                { "id": "s_temp9", "name": "Đại học Bách Khoa (cơ sở 1 - 268 Lý Thường Kiệt)", "lat": 10.772621759947818, "lng": 106.65771192993726},
                 { "id": "s_temp10", "name": "Vincom Hoàng Văn Thụ", "lat": 10.798689192463376, "lng": 106.65940672156532},
                 { "id": "s_temp11", "name": "Giga Mall (đường Phạm Văn Đồng)", "lat": 10.827922895191213, "lng": 106.7210550463233},
                 { "id": "s_temp12", "name": "Sân vận động quân khu 7 (đường Phan Đình Giót)", "lat": 10.800926712630005, "lng": 106.66705177894188},
-                 
 
+                // --- Mấy đại học ở trong thành phố
+                { "id": "s_temp9", "name": "ĐH Bách Khoa (cơ sở 1 - 268 Lý Thường Kiệt)", "lat": 10.772621759947818, "lng": 106.65771192993726},
+                { "id": "s_temp13", "name": "ĐH KHTN (cơ sở Nguyễn Văn Cừ)", "lat": 10.762370140068002, "lng": 106.68280334111569},
+                { "id": "s_temp14", "name": "ĐH Sư Phạm TPHCM (280 An Dương Vương)", "lat": 10.761053668607818, "lng": 106.68274292483837},
+                { "id": "s_temp15", "name": "ĐH Sài Gòn (An Dương Vương)", "lat": 10.760695923407939, "lng": 106.68248498613059},
 
                 // --- TỌA ĐỘ LÀNG ĐẠI HỌC (ĐÃ SỬA LỖI) ---
                 { "id": "s8", "name": "Trạm KTX Khu B (cổng trước)", "lat": 10.881695029579637, "lng": 106.78234036207795 },
                 { "id": "s8", "name": "Trạm KTX Khu B (cổng sau)", "lat": 10.883770598883276,  "lng": 106.77859599831878 },
                 { "id": "s9", "name": "Trạm ĐH Bách Khoa (Làng ĐH)", "lat": 10.88073, "lng": 106.80187 },
                 { "id": "s10", "name": "Trạm ĐH KHTN (Làng ĐH)", "lat": 10.880779744397792,  "lng": 106.80536483694458 },
-                { "id": "s11", "name": "Trạm KTX Khu A", "lat": 10.87840825315956, "lng": 106.80626088810587 },
+                { "id": "s11", "name": "Trạm KTX Khu A (Tạ Quang Bửu)", "lat": 10.877788424604208, "lng": 106.80600986510538 },
+                { "id": "s11_1", "name": "Trạm KTX Khu A (Quảng trường Sáng tạo)", "lat": 10.875807689013378, "lng": 106.80520107783111},
+                
                 { "id": "s12", "name": "Trường ĐH KHXH&NV", "lat": 10.873442956163826,  "lng": 106.80227879717464 },
-                { "id": "s13", "name": "Trường ĐH Quốc Tế", "lat": 10.87719848957338, "lng": 106.80283445876736 },
-                { "id": "s14", "name": "Trường ĐH CNTT", "lat": 10.868727289860669,  "lng":  106.80417515161123 },
+                { "id": "s13", "name": "Trường ĐH Quốc Tế (Quảng Trường sáng tạo)", "lat": 10.876641416265612, "lng": 106.80276296560683},
+                { "id": "s13_1", "name": "Trường ĐH Quốc Tế (Lê Quý Đôn)", "lat": 10.877172927408981, "lng": 106.80316931044686},
+
+                { "id": "s14", "name": "Trường ĐH CNTT (cổng sau)", "lat": 10.868633593032856, "lng": 106.8042343505712},    
+
                 { "id": "s15", "name": "Trạm ĐH Kinh tế - Luật", "lat": 10.86925295551176,  "lng": 106.77791312768804 },
                 { "id": "s16", "name": "Bến xe buýt ĐHQG", "lat": 10.87352, "lng": 106.80155 },
 
                 { "id": "s_ldh1", "name": "Đường 621", "lat": 10.874891934057626, "lng": 106.80637937611506},
-                
-                
+                { "id": "s_ldh2", "name": "Trạm ĐH Sư Phạm Kĩ Thuật (số 1 Kha Vạn Cân)", "lat": 10.849934072581357, "lng": 106.77212690866948},
+                { "id": "s_ldh3", "name": "Cầu vượt trạm 2", "lat": 10.863952590638217, "lng": 106.79749693483629},
+                { "id": "s_ldh4", "name": "Thư viện trung tâm ĐHQG (cổng trước - Võ Trường Toản)", "lat": 10.86781556801531, "lng": 106.79558236604126},
+                { "id": "s_ldh5", "name": "Thư viện trung tâm ĐHQG (cổng sau - Võ Trường Toản)", "lat": 10.870366942976077, "lng": 106.7965558996357},
+                { "id": "s_ldh6", "name": "ĐH Thể dục Thể thao (Võ Trường Toản)", "lat": 10.87064692027217, "lng": 106.7962213110355},
+                { "id": "s_ldh7", "name": "Nhà Văn hóa Sinh viên", "lat": 10.874859988722328, "lng": 106.80013117939146},
+
                 // --- TỌA ĐỘ ẢO (TUYẾN 19) (ĐÃ SỬA) ---
                 { "id": "s19_1", "name": "(T19) Trạm Hàng Xanh", "lat": 10.79995, "lng": 106.70580 },
                 { "id": "s19_3", "name": "(T19) Trạm Ngã tư Thủ Đức", "lat": 10.84920, "lng": 106.77250 },
